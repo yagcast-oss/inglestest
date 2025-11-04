@@ -12,11 +12,14 @@
     totalPairs: 0,
     matches: 0,
     items: [],
+    allItems: [],
     itemMap: new Map(),
     mode: 'list',
     singleQueue: [],
     currentIndex: 0,
     targetCard: null,
+    configuredSingleOptionCount: null,
+    singleOptionCount: 0,
   };
 
   function loadConfig() {
@@ -163,6 +166,75 @@
     });
   }
 
+  function determineSingleOptionCount(poolSize) {
+    if (poolSize <= 1) {
+      return poolSize;
+    }
+
+    if (
+      Number.isInteger(gameState.configuredSingleOptionCount) &&
+      gameState.configuredSingleOptionCount >= 2
+    ) {
+      return Math.min(poolSize, gameState.configuredSingleOptionCount);
+    }
+
+    return Math.min(poolSize, 4);
+  }
+
+  function createSingleOptionCard(item) {
+    const card = draggableTemplate.content.firstElementChild.cloneNode(true);
+    const media = card.querySelector('.card-media');
+    const title = card.querySelector('.card-title');
+    const description = card.querySelector('.card-description');
+
+    if (media) {
+      media.remove();
+    }
+
+    card.classList.add('text-option');
+    title.textContent = item.english;
+    description.hidden = true;
+
+    card.dataset.id = item.id;
+    const ariaLabel = `Arrastra ${item.english}`;
+    card.dataset.originalLabel = ariaLabel;
+    card.setAttribute('aria-label', ariaLabel);
+
+    card.addEventListener('dragstart', handleDragStart);
+    card.addEventListener('dragend', handleDragEnd);
+
+    return card;
+  }
+
+  function buildSingleRoundOptions(currentItem) {
+    if (!currentItem) {
+      return [];
+    }
+
+    const pool = gameState.allItems.length ? gameState.allItems : gameState.items;
+    const distractorPool = pool.filter((item) => item.id !== currentItem.id);
+    const requiredDistractors = Math.max(0, gameState.singleOptionCount - 1);
+    const distractors = shuffle(distractorPool).slice(0, requiredDistractors);
+    const combined = [currentItem, ...distractors];
+    return shuffle(combined);
+  }
+
+  function populateSingleOptions() {
+    const currentItem = gameState.singleQueue[gameState.currentIndex];
+
+    leftColumn.innerHTML = '';
+
+    if (!currentItem) {
+      return;
+    }
+
+    const optionSet = buildSingleRoundOptions(currentItem);
+    optionSet.forEach((item) => {
+      const card = createSingleOptionCard(item);
+      leftColumn.appendChild(card);
+    });
+  }
+
   function renderSingleBoard(items) {
     applyModeClasses('single');
 
@@ -177,33 +249,8 @@
     gameState.itemMap = new Map(items.map((item) => [item.id, item]));
     gameState.singleQueue = shuffle(items);
     gameState.currentIndex = 0;
-
-    const optionsOrder = shuffle(items);
-
-    optionsOrder.forEach((item) => {
-      const card = draggableTemplate.content.firstElementChild.cloneNode(true);
-      const media = card.querySelector('.card-media');
-      const title = card.querySelector('.card-title');
-      const description = card.querySelector('.card-description');
-
-      if (media) {
-        media.remove();
-      }
-
-      card.classList.add('text-option');
-      title.textContent = item.english;
-      description.hidden = true;
-
-      card.dataset.id = item.id;
-      const ariaLabel = `Arrastra ${item.english}`;
-      card.dataset.originalLabel = ariaLabel;
-      card.setAttribute('aria-label', ariaLabel);
-
-      card.addEventListener('dragstart', handleDragStart);
-      card.addEventListener('dragend', handleDragEnd);
-
-      leftColumn.appendChild(card);
-    });
+    const poolSize = gameState.allItems.length || items.length;
+    gameState.singleOptionCount = determineSingleOptionCount(poolSize);
 
     const targetCard = droppableTemplate.content.firstElementChild.cloneNode(true);
     targetCard.classList.add('single-target-card');
@@ -215,6 +262,7 @@
     gameState.targetCard = targetCard;
 
     updateSingleTargetCard();
+    populateSingleOptions();
   }
 
   function updateSingleTargetCard() {
@@ -385,6 +433,7 @@
       } else {
         updateSingleTargetCard();
       }
+      populateSingleOptions();
     }, 600);
   }
 
@@ -432,7 +481,7 @@
 
   function initGame() {
     loadConfig()
-      .then(({ displayCount, layoutMode, items }) => {
+      .then(({ displayCount, layoutMode, items, singleOptionsPerRound }) => {
         const normalized = normalizeItems(items);
         if (normalized.length === 0) {
           leftColumn.innerHTML = '<p>No hay tarjetas configuradas.</p>';
@@ -443,12 +492,17 @@
         }
         const maxItems = Math.max(1, displayCount == null ? normalized.length : displayCount);
         const limited = Math.min(maxItems, normalized.length);
+        gameState.allItems = normalized;
         const selectedItems = shuffle(normalized).slice(0, limited);
         const requestedMode =
           typeof layoutMode === 'string' && layoutMode.toLowerCase() === 'single'
             ? 'single'
             : 'list';
         gameState.mode = requestedMode;
+        const parsedOptionsCount = Number.parseInt(singleOptionsPerRound, 10);
+        gameState.configuredSingleOptionCount = Number.isNaN(parsedOptionsCount)
+          ? null
+          : parsedOptionsCount;
         renderBoard(selectedItems);
       })
       .catch((error) => {
