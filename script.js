@@ -195,7 +195,9 @@
       description.hidden = true;
 
       card.dataset.id = item.id;
-      card.setAttribute('aria-label', `Arrastra ${item.english}`);
+      const ariaLabel = `Arrastra ${item.english}`;
+      card.dataset.originalLabel = ariaLabel;
+      card.setAttribute('aria-label', ariaLabel);
 
       card.addEventListener('dragstart', handleDragStart);
       card.addEventListener('dragend', handleDragEnd);
@@ -339,15 +341,24 @@
     }
   }
 
+  function restoreSingleOption(card) {
+    if (!card) return;
+
+    card.classList.remove('matched');
+    card.setAttribute('draggable', 'true');
+    card.style.cursor = '';
+
+    if (card.dataset.originalLabel) {
+      card.setAttribute('aria-label', card.dataset.originalLabel);
+    }
+  }
+
   function handleSingleSuccess(matchedItem, draggedCard, targetCard) {
     if (!matchedItem) {
       return;
     }
 
     draggedCard.classList.add('matched');
-    draggedCard.setAttribute('draggable', 'false');
-    draggedCard.style.cursor = 'default';
-    draggedCard.setAttribute('aria-label', `${matchedItem.english} ya fue emparejado`);
 
     targetCard.classList.add('matched');
     targetCard.classList.remove('mismatch');
@@ -364,6 +375,7 @@
     matchCounter.textContent = gameState.matches.toString();
 
     setTimeout(() => {
+      restoreSingleOption(draggedCard);
       gameState.currentIndex += 1;
       targetCard.classList.remove('matched');
 
