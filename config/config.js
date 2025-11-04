@@ -1,0 +1,36 @@
+window.MATCH_GAME_CONFIG = {
+  displayCount: 4,
+  items: [
+    {
+      id: 'music',
+      left: '🎧 Playlist',
+      right: 'Tu soundtrack',
+    },
+    {
+      id: 'skate',
+      left: '🛹 Skate',
+      right: 'Trucos en la pista',
+    },
+    {
+      id: 'coding',
+      left: '💻 Code',
+      right: 'Proyectos geek',
+    },
+    {
+      id: 'travel',
+      left: '🌍 Viajes',
+      right: 'Rutas épicas',
+    },
+    {
+      id: 'art',
+      left: '🎨 Arte',
+      right: 'Creatividad a todo color',
+    },
+    {
+      id: 'sports',
+      left: '🏀 Deporte',
+      right: 'Energía sin límites',
+    },
+  ],
+};
+
