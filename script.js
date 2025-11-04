@@ -121,12 +121,15 @@
 
     shuffledLeft.forEach((item) => {
       const card = draggableTemplate.content.firstElementChild.cloneNode(true);
-      const image = card.querySelector('.card-image');
+      const media = card.querySelector('.card-media');
       const title = card.querySelector('.card-title');
       const description = card.querySelector('.card-description');
 
-      image.src = item.image;
-      image.alt = item.alt;
+      if (media) {
+        media.remove();
+      }
+
+      card.classList.add('list-text-card');
       title.textContent = item.caption;
 
       if (item.detail) {
@@ -361,10 +364,14 @@
     }
 
     if (matchedItem && preview && previewImage && previewCaption) {
-      previewImage.src = matchedItem.image;
-      previewImage.alt = matchedItem.alt;
-      previewCaption.textContent = matchedItem.detail || matchedItem.caption;
-      preview.hidden = false;
+      if (gameState.mode === 'list') {
+        preview.hidden = true;
+      } else {
+        previewImage.src = matchedItem.image;
+        previewImage.alt = matchedItem.alt;
+        previewCaption.textContent = matchedItem.detail || matchedItem.caption;
+        preview.hidden = false;
+      }
     }
 
     targetCard.setAttribute(
