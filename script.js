@@ -11,9 +11,8 @@
     totalPairs: 0,
     matches: 0,
     items: [],
+    itemMap: new Map(),
   };
-
-  const emojiRegex = /[\u2190-\u21FF\u2600-\u27BF\u{1F000}-\u{1FAFF}]/u;
 
   function loadConfig() {
     return new Promise((resolve, reject) => {
@@ -52,46 +51,70 @@
     return arr;
   }
 
-  function getEmojiFromLabel(label) {
-    if (!label) {
-      return '✨';
+  function normalizeItems(items) {
+    if (!Array.isArray(items)) {
+      return [];
     }
 
-    const trimmed = label.trim();
-    const firstGrapheme = Array.from(trimmed)[0];
+    return items.map((item, index) => {
+      const safeItem = item || {};
+      const id = safeItem.id != null ? String(safeItem.id) : `item-${index}`;
+      const caption =
+        safeItem.caption || safeItem.left || safeItem.spanish || `Tarjeta ${index + 1}`;
+      const english = safeItem.english || safeItem.right || '';
+      const detail = safeItem.detail || safeItem.description || '';
+      const image = safeItem.image || 'assets/placeholder.svg';
+      const altText =
+        safeItem.alt ||
+        caption ||
+        detail ||
+        english ||
+        'Ilustración asociada al concepto';
 
-    if (firstGrapheme && emojiRegex.test(firstGrapheme)) {
-      return firstGrapheme;
-    }
-
-    return '✨';
+      return {
+        id,
+        caption,
+        english,
+        detail,
+        image,
+        alt: altText,
+      };
+    });
   }
 
   function renderBoard(items) {
     leftColumn.innerHTML = '';
     rightColumn.innerHTML = '';
     matchCounter.textContent = '0';
+    toast.classList.remove('visible');
+
     gameState.matches = 0;
     gameState.totalPairs = items.length;
     gameState.items = items;
+    gameState.itemMap = new Map(items.map((item) => [item.id, item]));
 
     const shuffledLeft = shuffle(items);
     const shuffledRight = shuffle(items);
 
     shuffledLeft.forEach((item) => {
       const card = draggableTemplate.content.firstElementChild.cloneNode(true);
-      const emojiSpan = card.querySelector('.emoji');
+      const image = card.querySelector('.card-image');
       const title = card.querySelector('.card-title');
-      const emoji = getEmojiFromLabel(item.left);
-      const withoutEmoji = emoji
-        ? item.left.replace(emoji, '').trim()
-        : item.left;
+      const description = card.querySelector('.card-description');
 
-      emojiSpan.textContent = emoji;
-      title.textContent = withoutEmoji || item.left;
+      image.src = item.image;
+      image.alt = item.alt;
+      title.textContent = item.caption;
+
+      if (item.detail) {
+        description.textContent = item.detail;
+        description.hidden = false;
+      } else {
+        description.hidden = true;
+      }
 
       card.dataset.id = item.id;
-      card.setAttribute('aria-label', `Arrastrar ${item.left}`);
+      card.setAttribute('aria-label', `Arrastrar ${item.caption}`);
 
       card.addEventListener('dragstart', handleDragStart);
       card.addEventListener('dragend', handleDragEnd);
@@ -102,9 +125,16 @@
     shuffledRight.forEach((item) => {
       const card = droppableTemplate.content.firstElementChild.cloneNode(true);
       const title = card.querySelector('.card-title');
-      title.textContent = item.right;
+      const subtitle = card.querySelector('.card-subtitle');
+      const preview = card.querySelector('.match-preview');
+
+      title.textContent = item.english;
+      subtitle.textContent = 'Arrastra aquí';
+      preview.hidden = true;
+
       card.dataset.targetId = item.id;
-      card.setAttribute('aria-label', `Objetivo: ${item.right}`);
+      card.dataset.defaultSubtitle = 'Arrastra aquí';
+      card.setAttribute('aria-label', `Objetivo: ${item.english}`);
 
       card.addEventListener('dragover', handleDragOver);
       card.addEventListener('drop', handleDrop);
@@ -143,18 +173,35 @@
     if (!draggedCard) return;
 
     if (draggedId === targetId && !targetCard.classList.contains('matched')) {
+      const matchedItem = gameState.itemMap.get(targetId);
+
       targetCard.classList.add('matched');
-      targetCard.querySelector('.card-subtitle').textContent = '¡Perfecto!';
+      targetCard.classList.remove('mismatch');
+
+      const subtitle = targetCard.querySelector('.card-subtitle');
+      const preview = targetCard.querySelector('.match-preview');
+      const previewImage = targetCard.querySelector('.match-preview-image');
+      const previewCaption = targetCard.querySelector('.match-preview-caption');
+
+      subtitle.textContent = matchedItem ? matchedItem.caption : '¡Perfecto!';
+
+      if (matchedItem && preview && previewImage && previewCaption) {
+        previewImage.src = matchedItem.image;
+        previewImage.alt = matchedItem.alt;
+        previewCaption.textContent = matchedItem.detail || matchedItem.caption;
+        preview.hidden = false;
+      }
+
+      targetCard.setAttribute(
+        'aria-label',
+        matchedItem
+          ? `Match completo: ${matchedItem.english} significa ${matchedItem.caption}`
+          : 'Match completo'
+      );
 
       draggedCard.classList.add('matched');
       draggedCard.setAttribute('draggable', 'false');
       draggedCard.style.cursor = 'default';
-
-      const clone = draggedCard.cloneNode(true);
-      clone.classList.remove('dragging');
-      clone.setAttribute('draggable', 'false');
-      targetCard.appendChild(clone);
-
       draggedCard.remove();
 
       gameState.matches += 1;
@@ -163,11 +210,20 @@
       showToast('¡Match logrado! ✨');
 
       if (gameState.matches === gameState.totalPairs) {
-        showToast('¡Victoria! Todas las vibes combinan. 🎉');
+        showToast('¡Victoria! Todas las combinaciones correctas. 🎉');
       }
     } else {
       targetCard.classList.add('mismatch');
-      setTimeout(() => targetCard.classList.remove('mismatch'), 500);
+      const subtitle = targetCard.querySelector('.card-subtitle');
+      if (subtitle) {
+        subtitle.textContent = 'Sigue intentando';
+      }
+      setTimeout(() => {
+        targetCard.classList.remove('mismatch');
+        if (!targetCard.classList.contains('matched') && subtitle) {
+          subtitle.textContent = targetCard.dataset.defaultSubtitle || 'Arrastra aquí';
+        }
+      }, 600);
       showToast('Oops, intenta otra combinación.', true);
     }
   }
@@ -182,12 +238,22 @@
   function initGame() {
     loadConfig()
       .then(({ displayCount, items }) => {
-        const maxItems = Math.max(1, displayCount == null ? items.length : displayCount);
-        const selectedItems = shuffle(items).slice(0, Math.min(maxItems, items.length));
+        const normalized = normalizeItems(items);
+        if (normalized.length === 0) {
+          leftColumn.innerHTML = '<p>No hay tarjetas configuradas.</p>';
+          rightColumn.innerHTML = '';
+          matchCounter.textContent = '0';
+          showToast('No hay tarjetas configuradas.', true);
+          return;
+        }
+        const maxItems = Math.max(1, displayCount == null ? normalized.length : displayCount);
+        const limited = Math.min(maxItems, normalized.length);
+        const selectedItems = shuffle(normalized).slice(0, limited);
         renderBoard(selectedItems);
       })
       .catch((error) => {
         leftColumn.innerHTML = '<p>No se pudo cargar el juego.</p>';
+        rightColumn.innerHTML = '';
         showToast(error && error.message ? error.message : 'No se pudo cargar el juego.', true);
       });
   }

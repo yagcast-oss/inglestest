@@ -1,0 +1,18 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="lp-bg" x1="24" y1="18" x2="150" y2="158" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#a18cd1" />
+      <stop offset="1" stop-color="#fbc2eb" />
+    </linearGradient>
+    <linearGradient id="lp-screen" x1="60" y1="50" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#141e30" />
+      <stop offset="1" stop-color="#243b55" />
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="160" height="160" rx="28" fill="url(#lp-bg)" />
+  <rect x="46" y="48" width="88" height="60" rx="12" fill="url(#lp-screen)" />
+  <rect x="52" y="54" width="76" height="48" rx="8" fill="#1d2a40" opacity="0.7" />
+  <rect x="36" y="112" width="108" height="22" rx="8" fill="#f5f7fa" opacity="0.95" />
+  <rect x="42" y="118" width="96" height="10" rx="5" fill="#d8deeb" />
+  <circle cx="90" cy="125" r="4" fill="#9da6bc" />
+</svg>

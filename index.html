@@ -41,8 +41,13 @@
 
     <template id="draggable-card-template">
       <article class="card draggable" draggable="true">
-        <span class="emoji" aria-hidden="true"></span>
-        <h3 class="card-title"></h3>
+        <figure class="card-media">
+          <img class="card-image" src="" alt="" />
+        </figure>
+        <div class="card-info">
+          <h3 class="card-title"></h3>
+          <p class="card-description"></p>
+        </div>
       </article>
     </template>
 
@@ -50,6 +55,10 @@
       <article class="card droppable" role="button" tabindex="0">
         <h3 class="card-title"></h3>
         <p class="card-subtitle">Arrastra aquí</p>
+        <figure class="match-preview" hidden>
+          <img class="match-preview-image" src="" alt="" />
+          <figcaption class="match-preview-caption"></figcaption>
+        </figure>
       </article>
     </template>
 
