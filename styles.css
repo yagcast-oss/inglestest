@@ -58,6 +58,11 @@ body {
   gap: 2rem;
 }
 
+body[data-mode='single'] .game-board {
+  grid-template-columns: minmax(260px, 0.55fr) minmax(280px, 0.45fr);
+  align-items: start;
+}
+
 .column h2 {
   font-size: 1.4rem;
   margin-bottom: 1rem;
@@ -67,6 +72,15 @@ body {
 .card-grid {
   display: grid;
   gap: 1rem;
+}
+
+body[data-mode='single'] #right-column {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+body[data-mode='single'] #left-column {
+  align-content: start;
 }
 
 .card {
@@ -179,6 +193,32 @@ body {
   opacity: 0.35;
 }
 
+.card.text-option {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.6rem;
+}
+
+.card.text-option .card-info {
+  align-items: center;
+}
+
+.card.text-option .card-title {
+  font-size: 1.2rem;
+}
+
+.card.single-target-card {
+  align-items: center;
+  text-align: center;
+  gap: 1.1rem;
+  min-height: 0;
+}
+
+body[data-mode='single'] .card.single-target-card .card-subtitle {
+  font-size: 1.05rem;
+}
+
 .card.droppable {
   min-height: 220px;
   justify-content: flex-start;
@@ -208,6 +248,15 @@ body {
   background: rgba(122, 252, 255, 0.08);
 }
 
+body[data-mode='single'] .card.single-target-card .match-preview {
+  margin-top: 0;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  border-style: solid;
+  padding: 1.1rem;
+}
+
 .match-preview-image {
   width: 68px;
   height: 68px;
@@ -215,6 +264,16 @@ body {
   object-fit: cover;
   flex-shrink: 0;
   background: rgba(0, 0, 0, 0.2);
+}
+
+body[data-mode='single'] .card.single-target-card .match-preview-image {
+  width: min(220px, 100%);
+  height: auto;
+  aspect-ratio: unset;
+}
+
+body[data-mode='single'] .card.single-target-card .match-preview-caption {
+  font-size: 1rem;
 }
 
 .match-preview-caption {

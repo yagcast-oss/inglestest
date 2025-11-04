@@ -1,4 +1,5 @@
 (() => {
+  const body = document.body;
   const leftColumn = document.querySelector('#left-column');
   const rightColumn = document.querySelector('#right-column');
   const matchCounter = document.querySelector('#match-counter');
@@ -12,6 +13,10 @@
     matches: 0,
     items: [],
     itemMap: new Map(),
+    mode: 'list',
+    singleQueue: [],
+    currentIndex: 0,
+    targetCard: null,
   };
 
   function loadConfig() {
@@ -82,7 +87,19 @@
     });
   }
 
+  function applyModeClasses(mode) {
+    gameState.mode = mode === 'single' ? 'single' : 'list';
+    body.dataset.mode = gameState.mode;
+  }
+
   function renderBoard(items) {
+    if (gameState.mode === 'single') {
+      renderSingleBoard(items);
+      return;
+    }
+
+    applyModeClasses('list');
+
     leftColumn.innerHTML = '';
     rightColumn.innerHTML = '';
     matchCounter.textContent = '0';
@@ -92,6 +109,9 @@
     gameState.totalPairs = items.length;
     gameState.items = items;
     gameState.itemMap = new Map(items.map((item) => [item.id, item]));
+    gameState.targetCard = null;
+    gameState.singleQueue = [];
+    gameState.currentIndex = 0;
 
     const shuffledLeft = shuffle(items);
     const shuffledRight = shuffle(items);
@@ -143,6 +163,114 @@
     });
   }
 
+  function renderSingleBoard(items) {
+    applyModeClasses('single');
+
+    leftColumn.innerHTML = '';
+    rightColumn.innerHTML = '';
+    matchCounter.textContent = '0';
+    toast.classList.remove('visible');
+
+    gameState.matches = 0;
+    gameState.totalPairs = items.length;
+    gameState.items = items;
+    gameState.itemMap = new Map(items.map((item) => [item.id, item]));
+    gameState.singleQueue = shuffle(items);
+    gameState.currentIndex = 0;
+
+    const optionsOrder = shuffle(items);
+
+    optionsOrder.forEach((item) => {
+      const card = draggableTemplate.content.firstElementChild.cloneNode(true);
+      const media = card.querySelector('.card-media');
+      const title = card.querySelector('.card-title');
+      const description = card.querySelector('.card-description');
+
+      if (media) {
+        media.remove();
+      }
+
+      card.classList.add('text-option');
+      title.textContent = item.english;
+      description.hidden = true;
+
+      card.dataset.id = item.id;
+      card.setAttribute('aria-label', `Arrastra ${item.english}`);
+
+      card.addEventListener('dragstart', handleDragStart);
+      card.addEventListener('dragend', handleDragEnd);
+
+      leftColumn.appendChild(card);
+    });
+
+    const targetCard = droppableTemplate.content.firstElementChild.cloneNode(true);
+    targetCard.classList.add('single-target-card');
+
+    targetCard.addEventListener('dragover', handleDragOver);
+    targetCard.addEventListener('drop', handleDrop);
+
+    rightColumn.appendChild(targetCard);
+    gameState.targetCard = targetCard;
+
+    updateSingleTargetCard();
+  }
+
+  function updateSingleTargetCard() {
+    const targetCard = gameState.targetCard;
+    if (!targetCard) return;
+
+    const title = targetCard.querySelector('.card-title');
+    const subtitle = targetCard.querySelector('.card-subtitle');
+    const preview = targetCard.querySelector('.match-preview');
+    const previewImage = targetCard.querySelector('.match-preview-image');
+    const previewCaption = targetCard.querySelector('.match-preview-caption');
+
+    const currentItem = gameState.singleQueue[gameState.currentIndex];
+
+    if (!currentItem) {
+      targetCard.dataset.targetId = '';
+      targetCard.classList.add('completed');
+      targetCard.classList.remove('mismatch');
+      if (title) {
+        title.textContent = '¡Increíble!';
+      }
+      if (subtitle) {
+        subtitle.textContent = 'Terminaste todas las combinaciones.';
+        targetCard.dataset.defaultSubtitle = subtitle.textContent;
+      }
+      if (preview) {
+        preview.hidden = true;
+      }
+      targetCard.setAttribute('aria-label', 'Todas las combinaciones completadas.');
+      return;
+    }
+
+    targetCard.dataset.targetId = currentItem.id;
+    targetCard.classList.remove('matched', 'mismatch', 'completed');
+
+    if (title) {
+      title.textContent = currentItem.caption;
+    }
+
+    const subtitleText = currentItem.detail || 'Arrastra la palabra correcta';
+    if (subtitle) {
+      subtitle.textContent = subtitleText;
+      targetCard.dataset.defaultSubtitle = subtitleText;
+    }
+
+    if (preview && previewImage && previewCaption) {
+      preview.hidden = false;
+      previewImage.src = currentItem.image;
+      previewImage.alt = currentItem.alt;
+      previewCaption.textContent = currentItem.detail || currentItem.caption;
+    }
+
+    targetCard.setAttribute(
+      'aria-label',
+      `Objetivo actual: ${currentItem.caption}. Arrastra su palabra en inglés.`
+    );
+  }
+
   function handleDragStart(event) {
     const card = event.currentTarget;
     card.classList.add('dragging');
@@ -162,69 +290,124 @@
   function handleDrop(event) {
     event.preventDefault();
     const targetCard = event.currentTarget;
+    if (!targetCard.dataset.targetId) {
+      return;
+    }
     const draggedId = event.dataTransfer.getData('text/plain');
     evaluateMatch(draggedId, targetCard);
   }
 
+  function handleListSuccess(matchedItem, draggedCard, targetCard) {
+    targetCard.classList.add('matched');
+    targetCard.classList.remove('mismatch');
+
+    const subtitle = targetCard.querySelector('.card-subtitle');
+    const preview = targetCard.querySelector('.match-preview');
+    const previewImage = targetCard.querySelector('.match-preview-image');
+    const previewCaption = targetCard.querySelector('.match-preview-caption');
+
+    if (subtitle) {
+      subtitle.textContent = matchedItem ? matchedItem.caption : '¡Perfecto!';
+    }
+
+    if (matchedItem && preview && previewImage && previewCaption) {
+      previewImage.src = matchedItem.image;
+      previewImage.alt = matchedItem.alt;
+      previewCaption.textContent = matchedItem.detail || matchedItem.caption;
+      preview.hidden = false;
+    }
+
+    targetCard.setAttribute(
+      'aria-label',
+      matchedItem
+        ? `Match completo: ${matchedItem.english} significa ${matchedItem.caption}`
+        : 'Match completo'
+    );
+
+    draggedCard.classList.add('matched');
+    draggedCard.setAttribute('draggable', 'false');
+    draggedCard.style.cursor = 'default';
+    draggedCard.remove();
+
+    gameState.matches += 1;
+    matchCounter.textContent = gameState.matches.toString();
+
+    showToast('¡Match logrado! ✨');
+
+    if (gameState.matches === gameState.totalPairs) {
+      showToast('¡Victoria! Todas las combinaciones correctas. 🎉');
+    }
+  }
+
+  function handleSingleSuccess(matchedItem, draggedCard, targetCard) {
+    if (!matchedItem) {
+      return;
+    }
+
+    draggedCard.classList.add('matched');
+    draggedCard.setAttribute('draggable', 'false');
+    draggedCard.style.cursor = 'default';
+    draggedCard.setAttribute('aria-label', `${matchedItem.english} ya fue emparejado`);
+
+    targetCard.classList.add('matched');
+    targetCard.classList.remove('mismatch');
+    targetCard.dataset.targetId = '';
+
+    const subtitle = targetCard.querySelector('.card-subtitle');
+    if (subtitle) {
+      subtitle.textContent = `${matchedItem.english} ✔️`;
+    }
+
+    showToast('¡Match logrado! ✨');
+
+    gameState.matches += 1;
+    matchCounter.textContent = gameState.matches.toString();
+
+    setTimeout(() => {
+      gameState.currentIndex += 1;
+      targetCard.classList.remove('matched');
+
+      if (gameState.matches === gameState.totalPairs) {
+        updateSingleTargetCard();
+        showToast('¡Victoria! Todas las combinaciones correctas. 🎉');
+      } else {
+        updateSingleTargetCard();
+      }
+    }, 600);
+  }
+
+  function handleMismatch(targetCard) {
+    targetCard.classList.add('mismatch');
+    const subtitle = targetCard.querySelector('.card-subtitle');
+    if (subtitle) {
+      subtitle.textContent = 'Sigue intentando';
+    }
+    setTimeout(() => {
+      targetCard.classList.remove('mismatch');
+      if (!targetCard.classList.contains('matched') && subtitle) {
+        subtitle.textContent = targetCard.dataset.defaultSubtitle || 'Arrastra aquí';
+      }
+    }, 600);
+    showToast('Oops, intenta otra combinación.', true);
+  }
+
   function evaluateMatch(draggedId, targetCard) {
+    if (!targetCard) return;
     const targetId = targetCard.dataset.targetId;
     const draggedCard = document.querySelector(`.draggable[data-id="${draggedId}"]`);
 
     if (!draggedCard) return;
 
-    if (draggedId === targetId && !targetCard.classList.contains('matched')) {
+    if (draggedId === targetId) {
       const matchedItem = gameState.itemMap.get(targetId);
 
-      targetCard.classList.add('matched');
-      targetCard.classList.remove('mismatch');
-
-      const subtitle = targetCard.querySelector('.card-subtitle');
-      const preview = targetCard.querySelector('.match-preview');
-      const previewImage = targetCard.querySelector('.match-preview-image');
-      const previewCaption = targetCard.querySelector('.match-preview-caption');
-
-      subtitle.textContent = matchedItem ? matchedItem.caption : '¡Perfecto!';
-
-      if (matchedItem && preview && previewImage && previewCaption) {
-        previewImage.src = matchedItem.image;
-        previewImage.alt = matchedItem.alt;
-        previewCaption.textContent = matchedItem.detail || matchedItem.caption;
-        preview.hidden = false;
-      }
-
-      targetCard.setAttribute(
-        'aria-label',
-        matchedItem
-          ? `Match completo: ${matchedItem.english} significa ${matchedItem.caption}`
-          : 'Match completo'
-      );
-
-      draggedCard.classList.add('matched');
-      draggedCard.setAttribute('draggable', 'false');
-      draggedCard.style.cursor = 'default';
-      draggedCard.remove();
-
-      gameState.matches += 1;
-      matchCounter.textContent = gameState.matches.toString();
-
-      showToast('¡Match logrado! ✨');
-
-      if (gameState.matches === gameState.totalPairs) {
-        showToast('¡Victoria! Todas las combinaciones correctas. 🎉');
+      if (gameState.mode === 'single') {
+        handleSingleSuccess(matchedItem, draggedCard, targetCard);
+      } else if (!targetCard.classList.contains('matched')) {
+        handleListSuccess(matchedItem, draggedCard, targetCard);
       }
     } else {
-      targetCard.classList.add('mismatch');
-      const subtitle = targetCard.querySelector('.card-subtitle');
-      if (subtitle) {
-        subtitle.textContent = 'Sigue intentando';
-      }
-      setTimeout(() => {
-        targetCard.classList.remove('mismatch');
-        if (!targetCard.classList.contains('matched') && subtitle) {
-          subtitle.textContent = targetCard.dataset.defaultSubtitle || 'Arrastra aquí';
-        }
-      }, 600);
-      showToast('Oops, intenta otra combinación.', true);
+      handleMismatch(targetCard);
     }
   }
 
@@ -237,7 +420,7 @@
 
   function initGame() {
     loadConfig()
-      .then(({ displayCount, items }) => {
+      .then(({ displayCount, layoutMode, items }) => {
         const normalized = normalizeItems(items);
         if (normalized.length === 0) {
           leftColumn.innerHTML = '<p>No hay tarjetas configuradas.</p>';
@@ -249,6 +432,11 @@
         const maxItems = Math.max(1, displayCount == null ? normalized.length : displayCount);
         const limited = Math.min(maxItems, normalized.length);
         const selectedItems = shuffle(normalized).slice(0, limited);
+        const requestedMode =
+          typeof layoutMode === 'string' && layoutMode.toLowerCase() === 'single'
+            ? 'single'
+            : 'list';
+        gameState.mode = requestedMode;
         renderBoard(selectedItems);
       })
       .catch((error) => {

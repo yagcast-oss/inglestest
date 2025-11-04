@@ -1,5 +1,6 @@
 window.MATCH_GAME_CONFIG = {
   displayCount: 4,
+  layoutMode: 'list',
   items: [
     {
       id: 'headphones',
