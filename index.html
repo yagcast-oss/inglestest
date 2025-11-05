@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Match Vibes</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <main class="game-wrapper">
+      <header class="game-header">
+        <h1>Match Vibes</h1>
+        <p>Arrastra cada tarjeta a su vibra correcta para ganar.</p>
+      </header>
+
+      <section class="game-board" aria-live="polite">
+        <div class="column column-left">
+          <h2>Elige tu vibra</h2>
+          <div id="left-column" class="card-grid" aria-label="Tarjetas para arrastrar"></div>
+        </div>
+        <div class="column column-right">
+          <h2>Encuentra el match</h2>
+          <div id="right-column" class="card-grid" aria-label="Vibras objetivo"></div>
+        </div>
+      </section>
+
+      <footer class="game-footer">
+        <div class="status">
+          <span id="match-counter">0</span>
+          <span>parejas completas</span>
+        </div>
+        <button id="reset-btn" type="button">Jugar otra vez</button>
+      </footer>
+    </main>
+
+    <template id="draggable-card-template">
+      <article class="card draggable" draggable="true">
+        <figure class="card-media">
+          <img class="card-image" src="" alt="" />
+        </figure>
+        <div class="card-info">
+          <h3 class="card-title"></h3>
+          <p class="card-description"></p>
+        </div>
+      </article>
+    </template>
+
+    <template id="droppable-card-template">
+      <article class="card droppable" role="button" tabindex="0">
+        <h3 class="card-title"></h3>
+        <p class="card-subtitle">Arrastra aquí</p>
+        <figure class="match-preview" hidden>
+          <img class="match-preview-image" src="" alt="" />
+          <figcaption class="match-preview-caption"></figcaption>
+        </figure>
+      </article>
+    </template>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <script src="config/config.js" defer></script>
+    <script src="script.js" defer></script>
+  </body>
+</html>
